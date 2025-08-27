@@ -76,76 +76,106 @@ class MusicGenServer:
         import torch
 
         # Music Generation Model
-        self.music_model = ACEStepPipeline(
-            checkpoint_dir="/models",
-            dtype="bfloat16",
-            torch_compile=False,
-            cpu_offload=False,
-            overlapped_decode=False
-        )
+        try:
+            self.music_model = ACEStepPipeline(
+                checkpoint_dir="/models",
+                dtype="bfloat16",
+                torch_compile=False,
+                cpu_offload=False,
+                overlapped_decode=False
+            )
+            print("✓ Music model loaded successfully")
+        except Exception as e:
+            print(f"✗ Failed to load music model: {e}")
+            raise
 
         # Large Language Model
-        model_id = "Qwen/Qwen2-7B-Instruct"
-        self.tokenizer = AutoTokenizer.from_pretrained(model_id)
+        try:
+            model_id = "Qwen/Qwen2-7B-Instruct"
+            self.tokenizer = AutoTokenizer.from_pretrained(model_id)
 
-        self.llm_model = AutoModelForCausalLM.from_pretrained(
-            model_id,
-            torch_dtype="auto",
-            device_map="auto",
-            cache_dir="/.cache/huggingface"
-        )
+            self.llm_model = AutoModelForCausalLM.from_pretrained(
+                model_id,
+                torch_dtype="auto",
+                device_map="auto",
+                cache_dir="/.cache/huggingface"
+            )
+            print("✓ LLM model loaded successfully")
+        except Exception as e:
+            print(f"✗ Failed to load LLM model: {e}")
+            raise
 
         # Stable Diffusion Model (thumbnails)
-        self.image_pipe = AutoPipelineForText2Image.from_pretrained(
-            "stabilityai/sdxl-turbo", torch_dtype=torch.float16, variant="fp16", cache_dir="/.cache/huggingface")
-        self.image_pipe.to("cuda")
+        try:
+            self.image_pipe = AutoPipelineForText2Image.from_pretrained(
+                "stabilityai/sdxl-turbo", 
+                torch_dtype=torch.float16, 
+                variant="fp16", 
+                cache_dir="/.cache/huggingface"
+            )
+            self.image_pipe.to("cuda")
+            print("✓ Image generation model loaded successfully")
+        except Exception as e:
+            print(f"✗ Failed to load image model: {e}")
+            raise
 
     def prompt_qwen(self, question: str):
-        messages = [
-            {"role": "user", "content": question}
-        ]
-        text = self.tokenizer.apply_chat_template(
-            messages,
-            tokenize=False,
-            add_generation_prompt=True
-        )
-        model_inputs = self.tokenizer(
-            [text], return_tensors="pt").to(self.llm_model.device)
+        try:
+            messages = [
+                {"role": "user", "content": question}
+            ]
+            text = self.tokenizer.apply_chat_template(
+                messages,
+                tokenize=False,
+                add_generation_prompt=True
+            )
+            model_inputs = self.tokenizer(
+                [text], return_tensors="pt").to(self.llm_model.device)
 
-        generated_ids = self.llm_model.generate(
-            model_inputs.input_ids,
-            max_new_tokens=512
-        )
-        generated_ids = [
-            output_ids[len(input_ids):] for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)
-        ]
+            generated_ids = self.llm_model.generate(
+                model_inputs.input_ids,
+                max_new_tokens=512,
+                temperature=0.7,
+                do_sample=True,
+                pad_token_id=self.tokenizer.eos_token_id
+            )
+            generated_ids = [
+                output_ids[len(input_ids):] for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)
+            ]
 
-        response = self.tokenizer.batch_decode(
-            generated_ids, skip_special_tokens=True)[0]
+            response = self.tokenizer.batch_decode(
+                generated_ids, skip_special_tokens=True)[0]
 
-        return response
+            return response.strip()
+        except Exception as e:
+            print(f"Error in prompt_qwen: {e}")
+            raise
 
     def generate_prompt(self, description: str):
-        # Insert description into template
-        full_prompt = PROMPT_GENERATOR_PROMPT.format(user_prompt=description)
-
-        # Run LLM inference and return that
-        return self.prompt_qwen(full_prompt)
+        try:
+            full_prompt = PROMPT_GENERATOR_PROMPT.format(user_prompt=description)
+            return self.prompt_qwen(full_prompt)
+        except Exception as e:
+            print(f"Error generating prompt: {e}")
+            return f"electronic, {description}"  # Fallback
 
     def generate_lyrics(self, description: str):
-        # Insert description into template
-        full_prompt = LYRICS_GENERATOR_PROMPT.format(description=description)
-
-        # Run LLM inference and return that
-        return self.prompt_qwen(full_prompt)
+        try:
+            full_prompt = LYRICS_GENERATOR_PROMPT.format(description=description)
+            return self.prompt_qwen(full_prompt)
+        except Exception as e:
+            print(f"Error generating lyrics: {e}")
+            return "[verse]\nGenerated music about " + description + "\n[chorus]\nMusic for everyone"  # Fallback
 
     def generate_categories(self, description: str) -> List[str]:
-        prompt = f"Based on the following music description, list 3-5 relevant genres or categories as a comma-separated list. For example: Pop, Electronic, Sad, 80s. Description: '{description}'"
-
-        response_text = self.prompt_qwen(prompt)
-        categories = [cat.strip()
-                      for cat in response_text.split(",") if cat.strip()]
-        return categories
+        try:
+            prompt = f"Based on the following music description, list 3-5 relevant genres or categories as a comma-separated list. For example: Pop, Electronic, Sad, 80s. Description: '{description}'"
+            response_text = self.prompt_qwen(prompt)
+            categories = [cat.strip() for cat in response_text.split(",") if cat.strip()]
+            return categories[:5]  # Limit to 5 categories
+        except Exception as e:
+            print(f"Error generating categories: {e}")
+            return ["Electronic", "AI Generated"]  # Fallback
 
     def generate_and_upload_to_s3(
             self,
@@ -158,128 +188,147 @@ class MusicGenServer:
             seed: int,
             description_for_categorization: str
     ) -> GenerateMusicResponseS3:
-        final_lyrics = "[instrumental]" if instrumental else lyrics
-        print(f"Generated lyrics: \n{final_lyrics}")
-        print(f"Prompt: \n{prompt}")
+        try:
+            final_lyrics = "[instrumental]" if instrumental else lyrics
+            print(f"Generated lyrics: \n{final_lyrics}")
+            print(f"Prompt: \n{prompt}")
 
-        s3_client = boto3.client("s3")
-        bucket_name = os.environ["S3_BUCKET_NAME"]
+            # S3 setup
+            s3_client = boto3.client("s3")
+            bucket_name = os.environ.get("S3_BUCKET_NAME")
+            
+            if not bucket_name:
+                raise ValueError("S3_BUCKET_NAME environment variable not set")
 
-        output_dir = "/tmp/outputs"
-        os.makedirs(output_dir, exist_ok=True)
-        output_path = os.path.join(output_dir, f"{uuid.uuid4()}.wav")
+            output_dir = "/tmp/outputs"
+            os.makedirs(output_dir, exist_ok=True)
+            output_path = os.path.join(output_dir, f"{uuid.uuid4()}.wav")
 
-        self.music_model(
-            prompt=prompt,
-            lyrics=final_lyrics,
-            audio_duration=audio_duration,
-            infer_step=infer_step,
-            guidance_scale=guidance_scale,
-            save_path=output_path,
-            manual_seeds=str(seed)
-        )
+            # Generate music
+            self.music_model(
+                prompt=prompt,
+                lyrics=final_lyrics,
+                audio_duration=audio_duration,
+                infer_step=infer_step,
+                guidance_scale=guidance_scale,
+                save_path=output_path,
+                manual_seeds=str(seed) if seed != -1 else None
+            )
 
-        audio_s3_key = f"{uuid.uuid4()}.wav"
-        s3_client.upload_file(output_path, bucket_name, audio_s3_key)
-        os.remove(output_path)
+            # Upload audio to S3
+            audio_s3_key = f"music/{uuid.uuid4()}.wav"
+            s3_client.upload_file(output_path, bucket_name, audio_s3_key)
+            os.remove(output_path)
 
-        # Thumbnail generation
-        thumbnail_prompt = f"{prompt}, album cover art"
-        image = self.image_pipe(
-            prompt=thumbnail_prompt, num_inference_steps=2, guidance_scale=0.0).images[0]
+            # Generate and upload thumbnail
+            thumbnail_prompt = f"{prompt}, album cover art, music cover, artistic"
+            image = self.image_pipe(
+                prompt=thumbnail_prompt, 
+                num_inference_steps=2, 
+                guidance_scale=0.0
+            ).images[0]
 
-        image_output_path = os.path.join(output_dir, f"{uuid.uuid4()}.png")
-        image.save(image_output_path)
+            image_output_path = os.path.join(output_dir, f"{uuid.uuid4()}.png")
+            image.save(image_output_path)
 
-        image_s3_key = f"{uuid.uuid4()}.png"
-        s3_client.upload_file(image_output_path, bucket_name, image_s3_key)
-        os.remove(image_output_path)
+            image_s3_key = f"covers/{uuid.uuid4()}.png"
+            s3_client.upload_file(image_output_path, bucket_name, image_s3_key)
+            os.remove(image_output_path)
 
-        # Category generation: "hip-hop", "rock"
-        categories = self.generate_categories(description_for_categorization)
+            # Generate categories
+            categories = self.generate_categories(description_for_categorization)
 
-        return GenerateMusicResponseS3(
-            s3_key=audio_s3_key,
-            cover_image_s3_key=image_s3_key,
-            categories=categories
-        )
-
-    @modal.fastapi_endpoint(method="POST")
-    def generate(self) -> GenerateMusicResponse:
-        output_dir = "/tmp/outputs"
-        os.makedirs(output_dir, exist_ok=True)
-        output_path = os.path.join(output_dir, f"{uuid.uuid4()}.wav")
-
-        self.music_model(
-            prompt="electronic rap",
-            lyrics="[verse]\nWaves on the bass, pulsing in the speakers,\nTurn the dial up, we chasing six-figure features,\nGrinding on the beats, codes in the creases,\nDigital hustler, midnight in sneakers.\n\n[chorus]\nElectro vibes, hearts beat with the hum,\nUrban legends ride, we ain't ever numb,\nCircuits sparking live, tapping on the drum,\nLiving on the edge, never succumb.\n\n[verse]\nSynthesizers blaze, city lights a glow,\nRhythm in the haze, moving with the flow,\nSwagger on stage, energy to blow,\nFrom the blocks to the booth, you already know.\n\n[bridge]\nNight's electric, streets full of dreams,\nBass hits collective, bursting at seams,\nHustle perspective, all in the schemes,\nRise and reflective, ain't no in-betweens.\n\n[verse]\nVibin' with the crew, sync in the wire,\nGot the dance moves, fire in the attire,\nRhythm and blues, soul's our supplier,\nRun the digital zoo, higher and higher.\n\n[chorus]\nElectro vibes, hearts beat with the hum,\nUrban legends ride, we ain't ever numb,\nCircuits sparking live, tapping on the drum,\nLiving on the edge, never succumb.",
-            audio_duration=180,
-            infer_step=60,
-            guidance_scale=15,
-            save_path=output_path,
-        )
-
-        with open(output_path, "rb") as f:
-            audio_bytes = f.read()
-
-        audio_b64 = base64.b64encode(audio_bytes).decode("utf-8")
-
-        os.remove(output_path)
-
-        return GenerateMusicResponse(audio_data=audio_b64)
+            return GenerateMusicResponseS3(
+                s3_key=audio_s3_key,
+                cover_image_s3_key=image_s3_key,
+                categories=categories
+            )
+        except Exception as e:
+            print(f"Error in generate_and_upload_to_s3: {e}")
+            raise
 
     @modal.fastapi_endpoint(method="POST")
     def generate_from_description(self, request: GenerateFromDescriptionRequest) -> GenerateMusicResponseS3:
-        # Generating a prompt
-        prompt = self.generate_prompt(request.full_described_song)
+        try:
+            # Generating a prompt
+            prompt = self.generate_prompt(request.full_described_song)
 
-        # Generating lyrics
-        lyrics = ""
-        if not request.instrumental:
-            lyrics = self.generate_lyrics(request.full_described_song)
-        return self.generate_and_upload_to_s3(prompt=prompt, lyrics=lyrics,
-                                              description_for_categorization=request.full_described_song, **request.model_dump(exclude={"full_described_song"}))
+            # Generating lyrics
+            lyrics = ""
+            if not request.instrumental:
+                lyrics = self.generate_lyrics(request.full_described_song)
+            
+            return self.generate_and_upload_to_s3(
+                prompt=prompt, 
+                lyrics=lyrics,
+                description_for_categorization=request.full_described_song, 
+                **request.model_dump(exclude={"full_described_song"})
+            )
+        except Exception as e:
+            print(f"Error in generate_from_description: {e}")
+            raise modal.exception.InvalidError(f"Generation failed: {str(e)}")
 
     @modal.fastapi_endpoint(method="POST")
     def generate_with_lyrics(self, request: GenerateWithCustomLyricsRequest) -> GenerateMusicResponseS3:
-        return self.generate_and_upload_to_s3(prompt=request.prompt, lyrics=request.lyrics,
-                                              description_for_categorization=request.prompt, **request.model_dump(exclude={"prompt", "lyrics"}))
+        try:
+            return self.generate_and_upload_to_s3(
+                prompt=request.prompt, 
+                lyrics=request.lyrics,
+                description_for_categorization=request.prompt, 
+                **request.model_dump(exclude={"prompt", "lyrics"})
+            )
+        except Exception as e:
+            print(f"Error in generate_with_lyrics: {e}")
+            raise modal.exception.InvalidError(f"Generation failed: {str(e)}")
 
     @modal.fastapi_endpoint(method="POST")
     def generate_with_described_lyrics(self, request: GenerateWithDescribedLyricsRequest) -> GenerateMusicResponseS3:
-        # Generating lyrics
-        lyrics = ""
-        if not request.instrumental:
-            lyrics = self.generate_lyrics(request.described_lyrics)
-        return self.generate_and_upload_to_s3(prompt=request.prompt, lyrics=lyrics,
-                                              description_for_categorization=request.prompt, **request.model_dump(exclude={"described_lyrics", "prompt"}))
+        try:
+            # Generating lyrics
+            lyrics = ""
+            if not request.instrumental:
+                lyrics = self.generate_lyrics(request.described_lyrics)
+            
+            return self.generate_and_upload_to_s3(
+                prompt=request.prompt, 
+                lyrics=lyrics,
+                description_for_categorization=request.prompt, 
+                **request.model_dump(exclude={"described_lyrics", "prompt"})
+            )
+        except Exception as e:
+            print(f"Error in generate_with_described_lyrics: {e}")
+            raise modal.exception.InvalidError(f"Generation failed: {str(e)}")
 
 
 @app.local_entrypoint()
 def main():
-    server = MusicGenServer()
-    endpoint_url = server.generate_with_described_lyrics.get_web_url()
+    try:
+        server = MusicGenServer()
+        endpoint_url = server.generate_with_described_lyrics.get_web_url()
 
-    request_data = GenerateWithDescribedLyricsRequest(
-        prompt="rave, funk, 140BPM, disco",
-        described_lyrics="lyrics about water bottles",
-        guidance_scale=15
-    )
+        request_data = GenerateWithDescribedLyricsRequest(
+            prompt="rave, funk, 140BPM, disco",
+            described_lyrics="lyrics about water bottles",
+            guidance_scale=15
+        )
 
+        payload = request_data.model_dump()
 
-    payload = request_data.model_dump()
+        print(f"Making request to: {endpoint_url}")
+        print(f"Payload: {payload}")
 
-    response = requests.post(endpoint_url, json=payload)
-    response.raise_for_status()
-    result = GenerateMusicResponseS3(**response.json())
+        response = requests.post(endpoint_url, json=payload, timeout=300)  # 5 minute timeout
+        
+        print(f"Response status: {response.status_code}")
+        print(f"Response headers: {dict(response.headers)}")
+        
+        if response.status_code != 200:
+            print(f"Error response text: {response.text}")
+            response.raise_for_status()
 
-    print(
-        f"Success: {result.s3_key} {result.cover_image_s3_key} {result.categories}")
+        result = GenerateMusicResponseS3(**response.json())
+        print(f"Success: {result.s3_key} {result.cover_image_s3_key} {result.categories}")
 
-    # audio_bytes = base64.b64decode(result.audio_data)
-    # output_filename = "generated.wav"
-    # with open(output_filename, "wb") as f:
-    #     f.write(audio_bytes)
-
-    token_id = "ak-6jJ1hjB2ehh2ok4ChuBLQW"
-token_secret = "as-u7Wzn48zCVIXgDT6OA1SOG"
+    except Exception as e:
+        print(f"Error in main: {e}")
+        raise

@@ -10,14 +10,22 @@ export const generateSong = inngest.createFunction(
       key: "event.data.userId",
     },
     onFailure: async ({ event, error }) => {
-      await db.song.update({
-        where: {
-          id: (event?.data?.event?.data as { songId: string }).songId,
-        },
-        data: {
-          status: "failed",
-        },
-      });
+      console.error("Song generation failed:", error);
+      try {
+        const eventData = event?.data?.event?.data as { songId: string };
+        if (eventData?.songId) {
+          await db.song.update({
+            where: {
+              id: eventData.songId,
+            },
+            data: {
+              status: "failed",
+            },
+          });
+        }
+      } catch (e) {
+        console.error("Failed to update song status to failed:", e);
+      }
     },
   },
   { event: "generate-song-event" },
@@ -68,7 +76,7 @@ export const generateSong = inngest.createFunction(
         let endpoint = "";
         let body: RequestBody = {};
 
-        const commomParams = {
+        const commonParams = {
           guidance_scale: song.guidanceScale ?? undefined,
           infer_step: song.inferStep ?? undefined,
           audio_duration: song.audioDuration ?? undefined,
@@ -81,27 +89,25 @@ export const generateSong = inngest.createFunction(
           endpoint = env.GENERATE_FROM_DESCRIPTION;
           body = {
             full_described_song: song.fullDescribedSong,
-            ...commomParams,
+            ...commonParams,
           };
         }
-
         // Custom mode: Lyrics + prompt
         else if (song.lyrics && song.prompt) {
           endpoint = env.GENERATE_WITH_LYRICS;
           body = {
             lyrics: song.lyrics,
             prompt: song.prompt,
-            ...commomParams,
+            ...commonParams,
           };
         }
-
         // Custom mode: Prompt + described lyrics
         else if (song.describedLyrics && song.prompt) {
           endpoint = env.GENERATE_FROM_DESCRIBED_LYRICS;
           body = {
             described_lyrics: song.describedLyrics,
             prompt: song.prompt,
-            ...commomParams,
+            ...commonParams,
           };
         }
 
@@ -127,43 +133,98 @@ export const generateSong = inngest.createFunction(
         });
       });
 
-      const response = await step.fetch(endpoint, {
-        method: "POST",
-        body: JSON.stringify(body),
-        headers: {
-          "Content-Type": "application/json",
-          "Modal-Key": env.MODAL_KEY,
-          "Modal-Secret": env.MODAL_SECRET,
-        },
+      // Call Modal API with proper error handling and timeout
+      const modalResponse = await step.run("call-modal-api", async () => {
+        console.log("Starting Modal API call");
+        console.log("Endpoint:", endpoint);
+        console.log("Request body:", JSON.stringify(body, null, 2));
+        
+        // Validate endpoint exists
+        if (!endpoint) {
+          console.error("No endpoint provided");
+          throw new Error("No endpoint configured for this generation type");
+        }
+
+        // Create abort controller for timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => {
+          console.log("Request timeout - aborting fetch after 5 minutes");
+          controller.abort();
+        }, 300000); // 5 minute timeout
+
+        try {
+          console.log("Making fetch request to Modal...");
+          const response = await fetch(endpoint, {
+            method: "POST",
+            body: JSON.stringify(body),
+            headers: {
+              "Content-Type": "application/json",
+            },
+            signal: controller.signal,
+          });
+
+          clearTimeout(timeoutId);
+          console.log("Modal response received");
+          console.log("Modal response status:", response.status);
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error("Modal API error response:", errorText);
+            throw new Error(`Modal API failed with status ${response.status}: ${errorText}`);
+          }
+
+          // Get response JSON directly
+          const responseData = await response.json();
+          console.log("Modal API response:", JSON.stringify(responseData, null, 2));
+
+          // Validate that we got the expected structure
+          if (!responseData.s3_key) {
+            console.error("Modal response missing s3_key:", responseData);
+            throw new Error("Modal response missing required s3_key field");
+          }
+
+          console.log("Modal API call successful!");
+          return responseData;
+
+        } catch (error) {
+          clearTimeout(timeoutId);
+          
+          if (error.name === 'AbortError') {
+            console.error("Request timed out after 5 minutes");
+            throw new Error("Request timed out - Modal API took too long to respond");
+          }
+          
+          console.error("Error calling Modal:", error);
+          throw error;
+        }
       });
 
       await step.run("update-song-result", async () => {
-        const responseData = response.ok
-          ? ((await response.json()) as {
-              s3_key: string;
-              cover_image_s3_key: string;
-              categories: string[];
-            })
-          : null;
+        console.log("Updating song with Modal response:", {
+          s3Key: modalResponse?.s3_key,
+          thumbnailS3Key: modalResponse?.cover_image_s3_key,
+          categories: modalResponse?.categories,
+        });
 
         await db.song.update({
           where: {
             id: songId,
           },
           data: {
-            s3Key: responseData?.s3_key,
-            thumbnailS3Key: responseData?.cover_image_s3_key,
-            status: response.ok ? "processed" : "failed",
+            s3Key: modalResponse?.s3_key ?? null,
+            thumbnailS3Key: modalResponse?.cover_image_s3_key ?? null,
+            status: "processed",
           },
         });
 
-        if (responseData && responseData.categories.length > 0) {
+        if (modalResponse?.categories && modalResponse.categories.length > 0) {
+          console.log("Adding categories:", modalResponse.categories);
           await db.song.update({
             where: { id: songId },
             data: {
               categories: {
-                connectOrCreate: responseData.categories.map(
-                  (categoryName) => ({
+                connectOrCreate: modalResponse.categories.map(
+                  (categoryName: string) => ({
                     where: { name: categoryName },
                     create: { name: categoryName },
                   }),
@@ -175,8 +236,7 @@ export const generateSong = inngest.createFunction(
       });
 
       return await step.run("deduct-credits", async () => {
-        if (!response.ok) return;
-
+        console.log("Deducting 1 credit from user:", userId);
         return await db.user.update({
           where: { id: userId },
           data: {
@@ -189,6 +249,7 @@ export const generateSong = inngest.createFunction(
     } else {
       // Set song status "not enough credits"
       await step.run("set-status-no-credits", async () => {
+        console.log("User has insufficient credits:", credits);
         return await db.song.update({
           where: {
             id: songId,
