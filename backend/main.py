@@ -16,12 +16,17 @@ image = (
     .run_commands([
         "git clone https://github.com/ace-step/ACE-Step.git /tmp/ACE-Step",
         "cd /tmp/ACE-Step && pip install .",
-        # ACE-Step's setup.py upgrades diffusers past 0.31.0, which re-introduces
-        # the flux2 pipeline whose unconditional `from transformers import
-        # Qwen3ForCausalLM` blows up against transformers 4.50.0. Force diffusers
-        # back to a pre-flux2 release here, with --no-deps so we don't disturb
-        # transformers/torch/etc. that ACE-Step relies on.
-        "pip install --no-deps --force-reinstall diffusers==0.31.0",
+        # ACE-Step's setup.py upgrades diffusers to its own floor (>=0.33.0) and
+        # often pulls in 0.36+ where the flux2 pipeline lives. flux2's
+        # pipeline_flux2_klein.py has an unconditional
+        # `from transformers import Qwen3ForCausalLM`, which doesn't exist in
+        # transformers 4.50.0 (which ACE-Step itself pins) and crashes
+        # @modal.enter() on container boot.
+        # We pin to 0.35.0: the highest pre-flux2 release that still has every
+        # symbol ACE-Step imports (AutoencoderDC, ModelMixin,
+        # FromOriginalModelMixin, ConfigMixin, register_to_config). --no-deps so
+        # we don't disturb transformers/torch.
+        "pip install --no-deps --force-reinstall diffusers==0.35.0",
     ])
     .env({"HF_HOME": "/.cache/huggingface"})
     .add_local_python_source("prompts")
