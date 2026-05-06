@@ -1,5 +1,5 @@
-transformers
-diffusers
+transformers==4.50.0
+diffusers==0.31.0
 torch
 pydantic
 boto3
