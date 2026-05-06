@@ -9,13 +9,9 @@ import {
   SidebarGroupContent,
   SidebarGroupLabel,
   SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
 } from "../ui/sidebar";
 import { Credits } from "./credits";
 import SidebarMenuItems from "./sidebar-menu-items";
-import { User } from "lucide-react";
-import Upgrade from "./upgrade";
 
 export async function AppSidebar() {
   return (
@@ -36,18 +32,8 @@ export async function AppSidebar() {
       <SidebarFooter>
         <div className="mb-2 flex w-full items-center justify-center gap-1 text-xs">
           <Credits />
-          <Upgrade />
         </div>
-        <UserButton
-          variant="outline"
-          additionalLinks={[
-            {
-              label: "Customer Portal",
-              href: "/customer-portal",
-              icon: <User />,
-            },
-          ]}
-        />
+        <UserButton variant="outline" />
       </SidebarFooter>
     </Sidebar>
   );
