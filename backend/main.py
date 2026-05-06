@@ -13,7 +13,16 @@ image = (
     modal.Image.debian_slim()
     .apt_install("git")
     .pip_install_from_requirements("requirements.txt")
-    .run_commands(["git clone https://github.com/ace-step/ACE-Step.git /tmp/ACE-Step", "cd /tmp/ACE-Step && pip install ."])
+    .run_commands([
+        "git clone https://github.com/ace-step/ACE-Step.git /tmp/ACE-Step",
+        "cd /tmp/ACE-Step && pip install .",
+        # ACE-Step's setup.py upgrades diffusers past 0.31.0, which re-introduces
+        # the flux2 pipeline whose unconditional `from transformers import
+        # Qwen3ForCausalLM` blows up against transformers 4.50.0. Force diffusers
+        # back to a pre-flux2 release here, with --no-deps so we don't disturb
+        # transformers/torch/etc. that ACE-Step relies on.
+        "pip install --no-deps --force-reinstall diffusers==0.31.0",
+    ])
     .env({"HF_HOME": "/.cache/huggingface"})
     .add_local_python_source("prompts")
 )
