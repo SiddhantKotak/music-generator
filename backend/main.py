@@ -265,22 +265,36 @@ class MusicGenServer:
         )
         return result.model_dump()
 
-    # ---- Public spawn endpoints (return immediately with call_id) ----
+# ---- Public spawn endpoints (lightweight CPU functions) ----
+#
+# These are top-level @app.function endpoints, NOT class methods. That's
+# critical: a request to a class method has to wait for @modal.enter() to
+# finish loading ~20 GB of models before it can run, which blows past
+# Vercel's 60s function-invocation timeout on the very first cold start.
+# Top-level functions don't have that constraint — they return the
+# spawned-job's call_id in <1s and the heavy GPU container boots in the
+# background.
 
-    @modal.fastapi_endpoint(method="POST")
-    def generate_from_description(self, request: GenerateFromDescriptionRequest):
-        fc = self.generate_from_description_job.spawn(request.model_dump())
-        return {"call_id": fc.object_id}
 
-    @modal.fastapi_endpoint(method="POST")
-    def generate_with_lyrics(self, request: GenerateWithCustomLyricsRequest):
-        fc = self.generate_with_lyrics_job.spawn(request.model_dump())
-        return {"call_id": fc.object_id}
+@app.function(image=image)
+@modal.fastapi_endpoint(method="POST")
+def generate_from_description(request: GenerateFromDescriptionRequest):
+    fc = MusicGenServer().generate_from_description_job.spawn(request.model_dump())
+    return {"call_id": fc.object_id}
 
-    @modal.fastapi_endpoint(method="POST")
-    def generate_with_described_lyrics(self, request: GenerateWithDescribedLyricsRequest):
-        fc = self.generate_with_described_lyrics_job.spawn(request.model_dump())
-        return {"call_id": fc.object_id}
+
+@app.function(image=image)
+@modal.fastapi_endpoint(method="POST")
+def generate_with_lyrics(request: GenerateWithCustomLyricsRequest):
+    fc = MusicGenServer().generate_with_lyrics_job.spawn(request.model_dump())
+    return {"call_id": fc.object_id}
+
+
+@app.function(image=image)
+@modal.fastapi_endpoint(method="POST")
+def generate_with_described_lyrics(request: GenerateWithDescribedLyricsRequest):
+    fc = MusicGenServer().generate_with_described_lyrics_job.spawn(request.model_dump())
+    return {"call_id": fc.object_id}
 
 
 # Lightweight CPU-only status endpoint — does not need GPU class.
@@ -303,8 +317,7 @@ def get_status(call_id: str):
 def main():
     import requests
 
-    server = MusicGenServer()
-    spawn_url = server.generate_with_described_lyrics.get_web_url()
+    spawn_url = generate_with_described_lyrics.get_web_url()
 
     request_data = GenerateWithDescribedLyricsRequest(
         prompt="rave, funk, 140BPM, disco",
