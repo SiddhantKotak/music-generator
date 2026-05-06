@@ -2,10 +2,8 @@ from typing import List
 import uuid
 import modal
 import os
-import boto3
 
 from pydantic import BaseModel
-import requests
 
 from prompts import LYRICS_GENERATOR_PROMPT, PROMPT_GENERATOR_PROMPT
 
@@ -170,6 +168,8 @@ class MusicGenServer:
         seed: int,
         description_for_categorization: str,
     ) -> GenerateMusicResponseS3:
+        import boto3
+
         final_lyrics = "[instrumental]" if instrumental else lyrics
         print(f"Generated lyrics: \n{final_lyrics}")
         print(f"Prompt: \n{prompt}")
@@ -301,6 +301,8 @@ def get_status(call_id: str):
 
 @app.local_entrypoint()
 def main():
+    import requests
+
     server = MusicGenServer()
     spawn_url = server.generate_with_described_lyrics.get_web_url()
 
