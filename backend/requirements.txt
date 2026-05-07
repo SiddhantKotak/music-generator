@@ -1,5 +1,6 @@
 transformers==4.50.0
 diffusers==0.35.0
 torch
+torchcodec
 pydantic
 boto3

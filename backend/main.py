@@ -11,7 +11,7 @@ app = modal.App("music-generator")
 
 image = (
     modal.Image.debian_slim()
-    .apt_install("git")
+    .apt_install("git", "ffmpeg")
     .pip_install_from_requirements("requirements.txt")
     .run_commands([
         "git clone https://github.com/ace-step/ACE-Step.git /tmp/ACE-Step",
