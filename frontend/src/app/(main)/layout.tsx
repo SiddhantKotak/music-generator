@@ -1,7 +1,7 @@
 import "~/styles/globals.css";
 
 import { type Metadata } from "next";
-import { Geist } from "next/font/google";
+import { Geist, Instrument_Serif } from "next/font/google";
 import { Providers } from "~/components/providers";
 import { Toaster } from "~/components/ui/sonner";
 import {
@@ -10,21 +10,13 @@ import {
   SidebarTrigger,
 } from "~/components/ui/sidebar";
 import { AppSidebar } from "~/components/sidebar/app-sidebar";
-import { Separator } from "~/components/ui/separator";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "~/components/ui/breadcrumb";
 import BreadcrumbPageClient from "~/components/sidebar/breadcrumb-page-client";
 import SoundBar from "~/components/sound-bar";
 
 export const metadata: Metadata = {
-  title: "Home",
-  description: "Music Generator",
+  title: "aria. — music studio",
+  description:
+    "Describe a song in plain English; aria writes, sings, and produces it.",
   icons: [{ rel: "icon", url: "/favicon.ico" }],
 };
 
@@ -33,31 +25,36 @@ const geist = Geist({
   variable: "--font-geist-sans",
 });
 
+const instrumentSerif = Instrument_Serif({
+  subsets: ["latin"],
+  weight: "400",
+  style: "italic",
+  variable: "--font-instrument-serif",
+});
+
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${geist.variable}`}>
-      <body>
+    <html
+      lang="en"
+      className={`${geist.variable} ${instrumentSerif.variable} dark`}
+    >
+      <body className="bg-background text-foreground">
         <Providers>
-          <SidebarProvider>
+          <SidebarProvider
+            style={
+              {
+                "--sidebar-width": "16rem",
+              } as React.CSSProperties
+            }
+          >
             <AppSidebar />
-            <SidebarInset className="flex h-screen flex-col">
-              <header className="bg-background sticky-top z-10 border-b px-4 py-2">
-                <div className="flex shrink-0 grow items-center gap-2">
-                  <SidebarTrigger className="-ml-1" />
-                  <Separator
-                    orientation="vertical"
-                    className="mr-2 data-[orientation=vertical]:h-4"
-                  />
-                  <Breadcrumb>
-                    <BreadcrumbList>
-                      <BreadcrumbItem>
-                        <BreadcrumbPageClient />
-                      </BreadcrumbItem>
-                    </BreadcrumbList>
-                  </Breadcrumb>
-                </div>
+            <SidebarInset className="bg-background flex h-screen flex-col">
+              <header className="border-border/60 bg-background/80 sticky top-0 z-10 flex h-12 shrink-0 items-center gap-3 border-b px-4 backdrop-blur">
+                <SidebarTrigger className="text-muted-foreground hover:text-foreground -ml-1 size-7" />
+                <span className="bg-border h-3 w-px" aria-hidden="true" />
+                <BreadcrumbPageClient />
               </header>
               <main className="flex-1 overflow-y-auto">{children}</main>
               <SoundBar />

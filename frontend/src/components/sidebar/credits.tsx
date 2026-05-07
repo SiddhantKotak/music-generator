@@ -1,7 +1,6 @@
 "use server";
 
 import { headers } from "next/headers";
-import { redirect } from "next/navigation";
 import { auth } from "~/lib/auth";
 import { db } from "~/server/db";
 
@@ -18,9 +17,15 @@ export async function Credits() {
   });
 
   return (
-    <>
-      <p className="font-semibold">{user.credits}</p>
-      <p className="text-muted-foreground">Credits</p>
-    </>
+    <div className="border-border/60 px-3 py-3 border-t">
+      <div className="flex items-baseline gap-2">
+        <span className="text-brand font-serif text-[18px] italic leading-none tabular">
+          {user.credits}
+        </span>
+        <span className="text-muted-foreground text-[10px] tracking-[0.16em] uppercase">
+          credits
+        </span>
+      </div>
+    </div>
   );
 }

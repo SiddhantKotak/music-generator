@@ -1,0 +1,7 @@
+# Brainstorming + visual companion sessions (kept locally for reference, not commits)
+.superpowers/
+
+# OS / editor
+.DS_Store
+.idea/
+*.swp

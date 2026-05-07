@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import type { Track } from "./track-list";
 import {
   Dialog,
   DialogClose,
@@ -11,9 +10,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../ui/dialog";
-import { Label } from "../ui/label";
 import { Input } from "../ui/input";
-import { Button } from "../ui/button";
+import type { Track } from "./track-list";
 
 export function RenameDialog({
   track,
@@ -36,34 +34,44 @@ export function RenameDialog({
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[420px]">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>Rename Song</DialogTitle>
-            <DialogDescription>
-              Ener a new name for your song. Click save when you&apos;re done.
+            <p className="text-eyebrow">Rename</p>
+            <DialogTitle className="text-section mt-1">
+              What should we call it?
+            </DialogTitle>
+            <DialogDescription className="text-muted-foreground text-[13px]">
+              Pick a title that fits the mood. Old title:{" "}
+              <span className="text-foreground/70 italic">
+                &ldquo;{track.title ?? "Untitled"}&rdquo;
+              </span>
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="name" className="text-right">
-                Title
-              </Label>
-              <Input
-                id="name"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                className="col-span-3"
-              />
-            </div>
+          <div className="py-5">
+            <Input
+              id="name"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              autoFocus
+              placeholder="Untitled"
+            />
           </div>
-          <DialogFooter>
+          <DialogFooter className="gap-2">
             <DialogClose asChild>
-              <Button variant="outline" type="button">
+              <button
+                type="button"
+                className="border-border text-muted-foreground hover:text-foreground hover:bg-secondary/40 rounded-md border px-4 py-2 text-[12px] transition-colors"
+              >
                 Cancel
-              </Button>
+              </button>
             </DialogClose>
-            <Button type="submit">Save Changes</Button>
+            <button
+              type="submit"
+              className="bg-brand text-brand-foreground rounded-md px-4 py-2 text-[12px] font-semibold transition-opacity hover:opacity-90"
+            >
+              Save
+            </button>
           </DialogFooter>
         </form>
       </DialogContent>

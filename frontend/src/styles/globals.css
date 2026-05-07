@@ -9,13 +9,16 @@
   --font-sans:
     var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif,
     "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-serif:
+    var(--font-instrument-serif), Georgia, "Times New Roman", serif;
 }
 
 @theme inline {
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
+  --radius-xl: calc(var(--radius) + 6px);
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -34,11 +37,10 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
+
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
+
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -49,73 +51,130 @@
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
+/*
+ * aria. — mono + acid lime brand theme.
+ *
+ * Default `:root` IS the dark brand theme. `.dark` is defined (same values)
+ * so anything that toggles the `dark` class still resolves correctly.
+ * `.light` is a functional fallback only; not designed for.
+ *
+ * Token hierarchy:
+ *   primary / brand → lime (#d4ff00) — used on CTAs, active states, focus rings
+ *   accent          → mid-dark (#1a1a1a) — used for hovers and subtle bgs
+ *                     Crucially, accent is NOT lime. shadcn uses `bg-accent` for
+ *                     menu hovers, etc., and we don't want lime everywhere.
+ */
 :root {
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --radius: 0.375rem;
+
+  /* Canvas + foreground */
+  --background: #0a0a0a;
+  --foreground: #fafafa;
+
+  /* Deeper surface for cards, popovers, sidebar */
+  --card: #050505;
+  --card-foreground: #fafafa;
+  --popover: #050505;
+  --popover-foreground: #fafafa;
+
+  /* Brand: lime — used by Button.primary, focus rings, active indicators */
+  --primary: #d4ff00;
+  --primary-foreground: #0a0a0a;
+  --brand: #d4ff00;
+  --brand-foreground: #0a0a0a;
+
+  /* Muted surfaces (inputs, hovers, disabled) */
+  --secondary: #111111;
+  --secondary-foreground: #fafafa;
+  --muted: #111111;
+  --muted-foreground: #888888;
+
+  /* `accent` is intentionally a dark surface, NOT lime.
+     shadcn uses bg-accent for hovers — we want subtle lift, not lime flash. */
+  --accent: #1a1a1a;
+  --accent-foreground: #fafafa;
+
+  /* States */
+  --destructive: #f87171;
+  --border: #1a1a1a;
+  --input: #1a1a1a;
+  --ring: #d4ff00;
+
+  /* Sidebar overrides */
+  --sidebar: #050505;
+  --sidebar-foreground: #fafafa;
+  --sidebar-primary: #d4ff00;
+  --sidebar-primary-foreground: #0a0a0a;
+  --sidebar-accent: #111111;
+  --sidebar-accent-foreground: #fafafa;
+  --sidebar-border: #1a1a1a;
+  --sidebar-ring: #d4ff00;
 }
 
+/* `.dark` — same as `:root`, defined explicitly so toggling the class
+   doesn't visibly change anything (and so any third-party CSS that
+   targets `.dark *` still works). */
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --background: #0a0a0a;
+  --foreground: #fafafa;
+  --card: #050505;
+  --card-foreground: #fafafa;
+  --popover: #050505;
+  --popover-foreground: #fafafa;
+  --primary: #d4ff00;
+  --primary-foreground: #0a0a0a;
+  --brand: #d4ff00;
+  --brand-foreground: #0a0a0a;
+  --secondary: #111111;
+  --secondary-foreground: #fafafa;
+  --muted: #111111;
+  --muted-foreground: #888888;
+  --accent: #1a1a1a;
+  --accent-foreground: #fafafa;
+  --destructive: #f87171;
+  --border: #1a1a1a;
+  --input: #1a1a1a;
+  --ring: #d4ff00;
+  --sidebar: #050505;
+  --sidebar-foreground: #fafafa;
+  --sidebar-primary: #d4ff00;
+  --sidebar-primary-foreground: #0a0a0a;
+  --sidebar-accent: #111111;
+  --sidebar-accent-foreground: #fafafa;
+  --sidebar-border: #1a1a1a;
+  --sidebar-ring: #d4ff00;
+}
+
+/* Functional light-mode fallback — not designed, not tested for pitch. */
+.light {
+  --background: #fafafa;
+  --foreground: #0a0a0a;
+  --card: #ffffff;
+  --card-foreground: #0a0a0a;
+  --popover: #ffffff;
+  --popover-foreground: #0a0a0a;
+  --primary: #0a0a0a;
+  --primary-foreground: #fafafa;
+  --brand: #84cc16;
+  --brand-foreground: #0a0a0a;
+  --secondary: #f4f4f5;
+  --secondary-foreground: #0a0a0a;
+  --muted: #f4f4f5;
+  --muted-foreground: #71717a;
+  --accent: #f4f4f5;
+  --accent-foreground: #0a0a0a;
+  --destructive: #ef4444;
+  --border: #e4e4e7;
+  --input: #e4e4e7;
+  --ring: #84cc16;
+  --sidebar: #fafafa;
+  --sidebar-foreground: #0a0a0a;
+  --sidebar-primary: #0a0a0a;
+  --sidebar-primary-foreground: #fafafa;
+  --sidebar-accent: #f4f4f5;
+  --sidebar-accent-foreground: #0a0a0a;
+  --sidebar-border: #e4e4e7;
+  --sidebar-ring: #84cc16;
 }
 
 @layer base {
@@ -124,26 +183,81 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-feature-settings: "cv11", "ss01";
   }
-  :root {
-    --sidebar: oklch(0.985 0 0);
-    --sidebar-foreground: oklch(0.145 0 0);
-    --sidebar-primary: oklch(0.205 0 0);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.97 0 0);
-    --sidebar-accent-foreground: oklch(0.205 0 0);
-    --sidebar-border: oklch(0.922 0 0);
-    --sidebar-ring: oklch(0.708 0 0);
+  /* Selection — lime on black */
+  ::selection {
+    background: var(--brand);
+    color: var(--brand-foreground);
+  }
+  /* Subtle scrollbars */
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #1a1a1a; border-radius: 999px; }
+  ::-webkit-scrollbar-thumb:hover { background: #2a2a2a; }
+}
+
+/* Editorial typography utilities — semantic over utility for headers */
+@layer components {
+  .text-display {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-weight: 400;
+    font-size: clamp(28px, 4vw, 42px);
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+  }
+  .text-section {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-weight: 400;
+    font-size: 18px;
+    line-height: 1.2;
+    letter-spacing: -0.005em;
+  }
+  .text-song {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-weight: 400;
+    font-size: 14px;
+    line-height: 1.2;
+    letter-spacing: -0.005em;
+  }
+  .text-eyebrow {
+    font-family: var(--font-sans);
+    font-size: 10px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.22em;
+    color: var(--brand);
+  }
+  .text-meta {
+    font-family: var(--font-sans);
+    font-size: 10px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: var(--muted-foreground);
+  }
+  .text-meta-brand {
+    font-family: var(--font-sans);
+    font-size: 10px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: var(--brand);
+  }
+  .tabular {
+    font-variant-numeric: tabular-nums;
   }
 
-  .dark {
-    --sidebar: oklch(0.205 0 0);
-    --sidebar-foreground: oklch(0.985 0 0);
-    --sidebar-primary: oklch(0.488 0.243 264.376);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.269 0 0);
-    --sidebar-accent-foreground: oklch(0.985 0 0);
-    --sidebar-border: oklch(1 0 0 / 10%);
-    --sidebar-ring: oklch(0.439 0 0);
+  /* Editorial section header: title + meta divided by hairline */
+  .section-head {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 16px;
   }
 }

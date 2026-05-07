@@ -1,13 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
-import { Textarea } from "../ui/textarea";
-import { Button } from "../ui/button";
-import { Loader2, Music, Plus } from "lucide-react";
-import { Switch } from "../ui/switch";
-import { Badge } from "../ui/badge";
+import { Plus, Sparkles } from "lucide-react";
 import { toast } from "sonner";
+import { Textarea } from "../ui/textarea";
+import { Switch } from "../ui/switch";
 import { generateSong, type GenerateRequest } from "~/actions/generation";
 
 const inspirationTags = [
@@ -17,6 +14,8 @@ const inspirationTags = [
   "Lo-fi hip hop",
   "Driving rock anthem",
   "Summer beach vibe",
+  "Late-night jazz",
+  "City pop",
 ];
 
 const styleTags = [
@@ -27,6 +26,7 @@ const styleTags = [
   "Funky guitar",
   "Soulful vocals",
   "Ambient pads",
+  "140 BPM",
 ];
 
 export function SongPanel() {
@@ -38,69 +38,38 @@ export function SongPanel() {
   const [styleInput, setStyleInput] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleStyleInputTagClick = (tag: string) => {
-    const currentTags = styleInput
+  const appendTag = (
+    tag: string,
+    value: string,
+    setValue: (s: string) => void,
+  ) => {
+    const tags = value
       .split(", ")
       .map((s) => s.trim())
-      .filter((s) => s);
-
-    if (!currentTags.includes(tag)) {
-      if (styleInput.trim() === "") {
-        setStyleInput(tag);
-      } else {
-        setStyleInput(styleInput + ", " + tag);
-      }
-    }
-  };
-
-  const handleInspirationTagClick = (tag: string) => {
-    const currentTags = description
-      .split(", ")
-      .map((s) => s.trim())
-      .filter((s) => s);
-
-    if (!currentTags.includes(tag)) {
-      if (description.trim() === "") {
-        setDescription(tag);
-      } else {
-        setDescription(description + ", " + tag);
-      }
-    }
+      .filter(Boolean);
+    if (tags.includes(tag)) return;
+    setValue(value.trim() === "" ? tag : `${value}, ${tag}`);
   };
 
   const handleCreate = async () => {
     if (mode === "simple" && !description.trim()) {
-      toast.error("Please describe your song before creating.");
+      toast.error("Describe a song before composing.");
       return;
     }
     if (mode === "custom" && !styleInput.trim()) {
-      toast.error("Please add some styles for your song.");
+      toast.error("Add at least one style for the composer to work from.");
       return;
     }
 
-    // Generate song
     let requestBody: GenerateRequest;
-
     if (mode === "simple") {
-      requestBody = {
-        fullDescribedSong: description,
-        instrumental,
-      };
+      requestBody = { fullDescribedSong: description, instrumental };
     } else {
       const prompt = styleInput;
-      if (lyricsMode === "write") {
-        requestBody = {
-          prompt,
-          lyrics,
-          instrumental,
-        };
-      } else {
-        requestBody = {
-          prompt,
-          describedLyrics: lyrics,
-          instrumental,
-        };
-      }
+      requestBody =
+        lyricsMode === "write"
+          ? { prompt, lyrics, instrumental }
+          : { prompt, describedLyrics: lyrics, instrumental };
     }
 
     try {
@@ -109,163 +78,238 @@ export function SongPanel() {
       setDescription("");
       setLyrics("");
       setStyleInput("");
-    } catch (error) {
-      toast.error("Failed to generate song");
+      toast.success("Queued. ~90 seconds to first listen.");
+    } catch {
+      toast.error("Couldn't queue that one. Try again in a moment.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="bg-muted/30 flex w-full flex-col border-r lg:w-80">
-      <div className="flex-1 overflow-y-auto p-4">
-        <Tabs
-          value={mode}
-          onValueChange={(value) => setMode(value as "simple" | "custom")}
-        >
-          <TabsList className="w-full">
-            <TabsTrigger value="simple">Simple</TabsTrigger>
-            <TabsTrigger value="custom">Custom</TabsTrigger>
-          </TabsList>
+    <aside className="border-border/60 bg-card/40 flex w-full shrink-0 flex-col border-r lg:w-[360px]">
+      <div className="flex-1 overflow-y-auto px-6 py-7">
+        {/* Header */}
+        <div className="mb-6">
+          <p className="text-eyebrow">Composer</p>
+          <h2 className="text-display mt-1 text-[28px]">
+            Make a <em>song.</em>
+          </h2>
+        </div>
 
-          <TabsContent value="simple" className="mt-6 space-y-6">
-            <div className="flex flex-col gap-3">
-              <label className="text-sm font-medium">Describe your song</label>
+        {/* Mode segmented control */}
+        <div className="bg-secondary border-border/60 mb-7 inline-flex rounded-md border p-[3px] text-[12px]">
+          <button
+            type="button"
+            onClick={() => setMode("simple")}
+            className={[
+              "rounded-[4px] px-3 py-1 transition-colors",
+              mode === "simple"
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground",
+            ].join(" ")}
+          >
+            Quick
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode("custom")}
+            className={[
+              "rounded-[4px] px-3 py-1 transition-colors",
+              mode === "custom"
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground",
+            ].join(" ")}
+          >
+            Custom
+          </button>
+        </div>
+
+        {mode === "simple" ? (
+          <div className="space-y-7">
+            <div>
+              <FieldLabel right="required">Describe your song</FieldLabel>
               <Textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="A dreamy lofi hip hop song, perfect for studying of relaxing"
+                placeholder="A late-night drive through Tokyo, neon reflecting off wet pavement. Add mood, instrumentation, a tempo if you have one."
                 className="min-h-[120px] resize-none"
               />
             </div>
 
-            {/* Lyrics button an instrumentals toggle */}
-            <div className="flex items-center justify-between">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setMode("custom")}
-              >
-                <Plus className="mr-2" />
-                Lyrics
-              </Button>
-              <div className="flex items-center gap-2">
-                <label className="text-sm font-medium">Instrumental</label>
-                <Switch
-                  checked={instrumental}
-                  onCheckedChange={setInstrumental}
-                />
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-3">
-              <label className="text-sm font-medium">Inspiration</label>
-              <div className="w-full overflow-x-auto whitespace-nowrap">
-                <div className="flex gap-2 pb-2">
-                  {inspirationTags.map((tag) => (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-7 flex-shrink-0 bg-transparent text-xs"
+            <div>
+              <FieldLabel right="tap to add">Inspiration</FieldLabel>
+              <div className="flex flex-wrap gap-1.5">
+                {inspirationTags.map((tag) => {
+                  const on = description.includes(tag);
+                  return (
+                    <button
                       key={tag}
-                      onClick={() => handleInspirationTagClick(tag)}
+                      type="button"
+                      onClick={() =>
+                        appendTag(tag, description, setDescription)
+                      }
+                      className={[
+                        "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] transition-colors",
+                        on
+                          ? "border-brand text-brand bg-brand/5"
+                          : "border-border text-muted-foreground hover:text-foreground hover:border-border/80",
+                      ].join(" ")}
                     >
-                      <Plus className="mr-1" />
+                      <Plus className="size-2.5" strokeWidth={2.5} />
                       {tag}
-                    </Button>
-                  ))}
-                </div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
-          </TabsContent>
 
-          <TabsContent value="custom" className="mt-6 space-y-6">
-            <div className="flex flex-col gap-3">
-              <div className="flex items-center justify-between">
-                <label className="text-sm font-medium">Lyrics</label>
-                <div className="flex items-center gap-1">
-                  <Button
-                    variant={lyricsMode === "auto" ? "secondary" : "ghost"}
-                    onClick={() => {
-                      setLyricsMode("auto");
-                      setLyrics("");
-                    }}
-                    size="sm"
-                    className="h-7 text-xs"
-                  >
-                    Auto
-                  </Button>
-                  <Button
-                    variant={lyricsMode === "write" ? "secondary" : "ghost"}
+            <ToggleRow
+              label="Instrumental only"
+              checked={instrumental}
+              onChange={setInstrumental}
+            />
+          </div>
+        ) : (
+          <div className="space-y-7">
+            <div>
+              <div className="mb-2 flex items-center justify-between">
+                <FieldLabel>Lyrics</FieldLabel>
+                <div className="border-border/60 inline-flex rounded-md border p-[2px] text-[10px]">
+                  <button
+                    type="button"
                     onClick={() => {
                       setLyricsMode("write");
                       setLyrics("");
                     }}
-                    size="sm"
-                    className="h-7 text-xs"
+                    className={[
+                      "rounded px-2 py-0.5 transition-colors",
+                      lyricsMode === "write"
+                        ? "bg-secondary text-foreground"
+                        : "text-muted-foreground hover:text-foreground",
+                    ].join(" ")}
                   >
                     Write
-                  </Button>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLyricsMode("auto");
+                      setLyrics("");
+                    }}
+                    className={[
+                      "rounded px-2 py-0.5 transition-colors",
+                      lyricsMode === "auto"
+                        ? "bg-secondary text-foreground"
+                        : "text-muted-foreground hover:text-foreground",
+                    ].join(" ")}
+                  >
+                    Auto
+                  </button>
                 </div>
               </div>
               <Textarea
-                placeholder={
-                  lyricsMode === "write"
-                    ? "Add your own lyrics here"
-                    : "Describe you lyrics, e.g., a sad song about lost love"
-                }
                 value={lyrics}
                 onChange={(e) => setLyrics(e.target.value)}
-                className="min-h-[100px] resize-none"
+                placeholder={
+                  lyricsMode === "write"
+                    ? "[verse]\nLines, in order, like the studio sheet…"
+                    : "Sketch the lyrics in plain English — a sad song about a long drive home."
+                }
+                className="min-h-[110px] resize-none"
               />
             </div>
 
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-medium">Instrumental</label>
-              <Switch
-                checked={instrumental}
-                onCheckedChange={setInstrumental}
-              />
-            </div>
-
-            {/* Styles */}
-            <div className="flex flex-col gap-3">
-              <label className="text-sm font-medium">Styles</label>
+            <div>
+              <FieldLabel right="tap to add">Style</FieldLabel>
               <Textarea
-                placeholder="Enter style tags"
                 value={styleInput}
                 onChange={(e) => setStyleInput(e.target.value)}
-                className="min-h-[60px] resize-none"
+                placeholder="rave, funk, 140 BPM, female vocal, minor key"
+                className="min-h-[64px] resize-none"
               />
-              <div className="w-full overflow-x-auto whitespace-nowrap">
-                <div className="flex gap-2 pb-2">
-                  {styleTags.map((tag) => (
-                    <Badge
-                      variant="secondary"
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {styleTags.map((tag) => {
+                  const on = styleInput.includes(tag);
+                  return (
+                    <button
                       key={tag}
-                      className="hover:bg-secondary/50 flex-shrink-0 cursor-pointer text-xs"
-                      onClick={() => handleStyleInputTagClick(tag)}
+                      type="button"
+                      onClick={() => appendTag(tag, styleInput, setStyleInput)}
+                      className={[
+                        "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] transition-colors",
+                        on
+                          ? "border-brand text-brand bg-brand/5"
+                          : "border-border text-muted-foreground hover:text-foreground hover:border-border/80",
+                      ].join(" ")}
                     >
+                      <Plus className="size-2.5" strokeWidth={2.5} />
                       {tag}
-                    </Badge>
-                  ))}
-                </div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
-          </TabsContent>
-        </Tabs>
+
+            <ToggleRow
+              label="Instrumental only"
+              checked={instrumental}
+              onChange={setInstrumental}
+            />
+          </div>
+        )}
       </div>
 
-      <div className="border-t p-4">
-        <Button
+      <div className="border-border/60 space-y-2 border-t px-6 py-4">
+        <button
+          type="button"
           onClick={handleCreate}
           disabled={loading}
-          className="w-full cursor-pointer bg-gradient-to-r from-orange-500 to-pink-500 font-medium text-white hover:from-orange-600 hover:to-pink-600"
+          className="bg-brand text-brand-foreground inline-flex h-10 w-full items-center justify-center gap-2 rounded-md text-[13px] font-semibold transition-opacity hover:opacity-90 disabled:opacity-60"
         >
-          {loading ? <Loader2 className="animate-spin" /> : <Music />}
-          {loading ? "Creating..." : "Create"}
-        </Button>
+          {loading ? (
+            <span className="border-brand-foreground/40 border-t-brand-foreground size-3.5 animate-spin rounded-full border-[1.5px]" />
+          ) : (
+            <Sparkles className="size-3.5" strokeWidth={2.25} />
+          )}
+          {loading ? "Queueing…" : "Compose · 1 credit"}
+        </button>
+        <p className="text-muted-foreground/80 text-center text-[9px] tracking-[0.18em] uppercase">
+          ~ 90 sec to first listen
+        </p>
       </div>
+    </aside>
+  );
+}
+
+function FieldLabel({
+  children,
+  right,
+}: {
+  children: React.ReactNode;
+  right?: string;
+}) {
+  return (
+    <div className="text-muted-foreground mb-2 flex items-center justify-between text-[9px] tracking-[0.16em] uppercase">
+      <span>{children}</span>
+      {right && <span className="text-muted-foreground/60">{right}</span>}
+    </div>
+  );
+}
+
+function ToggleRow({
+  label,
+  checked,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <div className="border-border/60 flex items-center justify-between border-t pt-4">
+      <span className="text-foreground text-[13px]">{label}</span>
+      <Switch checked={checked} onCheckedChange={onChange} />
     </div>
   );
 }

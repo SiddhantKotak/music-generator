@@ -7,8 +7,7 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarMenu,
+  SidebarHeader,
 } from "../ui/sidebar";
 import { Credits } from "./credits";
 import SidebarMenuItems from "./sidebar-menu-items";
@@ -16,24 +15,30 @@ import SidebarMenuItems from "./sidebar-menu-items";
 export async function AppSidebar() {
   return (
     <Sidebar>
-      <SidebarContent>
+      <SidebarHeader className="px-4 pt-5 pb-2">
+        <div className="flex flex-col">
+          <span className="font-serif text-[26px] leading-none italic tracking-tight">
+            aria<span className="text-brand">.</span>
+          </span>
+          <span className="text-muted-foreground mt-1.5 text-[9px] tracking-[0.22em] uppercase">
+            music studio
+          </span>
+        </div>
+      </SidebarHeader>
+
+      <SidebarContent className="px-2 pt-4">
         <SidebarGroup>
-          <SidebarGroupLabel className="text-primary mt-4 mb-12 flex flex-col items-start justify-start px-2 text-3xl font-black tracking-widest uppercase">
-            <p>Music</p>
-            <p className="text-lg">Generator</p>
-          </SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItems />
-            </SidebarMenu>
+            <SidebarMenuItems />
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter>
-        <div className="mb-2 flex w-full items-center justify-center gap-1 text-xs">
-          <Credits />
+
+      <SidebarFooter className="gap-0 p-0">
+        <Credits />
+        <div className="border-border/60 border-t p-2">
+          <UserButton variant="outline" />
         </div>
-        <UserButton variant="outline" />
       </SidebarFooter>
     </Sidebar>
   );
